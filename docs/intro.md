@@ -1,11 +1,12 @@
 ---
 sidebar_position: 0
-slug: /intro
 ---
 
 # 指南
 
 ## 条件
+
+本次活动会假设你已经完成相关要求或具有相关能力
 
 - 阅读 Webpack 的 [CONTRIBUTING](https://github.com/webpack/webpack/blob/main/CONTRIBUTING.md) 文档
 - 熟悉 Webpack 的 [基本概念](https://webpack.js.org/concepts/)

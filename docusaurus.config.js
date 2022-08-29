@@ -65,7 +65,7 @@ const config = {
         items: [
           {
             type: 'doc',
-            docId: '指南',
+            docId: 'intro',
             position: 'left',
             label: '目录',
           },
