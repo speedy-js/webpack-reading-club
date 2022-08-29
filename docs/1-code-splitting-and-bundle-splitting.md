@@ -89,7 +89,7 @@ TODO： 介绍 webpack 的整体流程，和本次阅读主题是其中那一部
 
 - 多次反复阅读，培养对这段代码逻辑的熟悉程度
 - 以函数为粒度，编写流程图，总结每个流程的大意
-- 通过 Debugger 使用解释器去观察代码的实际执行流程
+- 使用 Debugger ，通过打断点等方式去观察代码的实际执行流程
 
 ##### 缺乏信息
 
@@ -379,4 +379,4 @@ TODO
 除了文章引用的链接，本文还参考了
 
 - [浅析 webpack 打包流程(原理) 三 - 生成 chunk](https://www.jianshu.com/p/b788f7620662)
-
+- [Webpack: An in-depth introduction to SplitChunksPlugin](https://indepth.dev/posts/1490/webpack-an-in-depth-introduction-to-splitchunksplugin)
