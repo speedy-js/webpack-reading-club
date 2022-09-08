@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# 1. Code splitting and Bundle spliiting
+# 1. Code splitting and Bundle splitting
 
 ## 步骤一
 
@@ -25,10 +25,6 @@ sidebar_position: 1
 ### 核心问题
 Webpack 是如何做 Code splitting 和 Bundle splitting 的？
 
-### 小组讨论
-
-WIP
-
 ### 本次活动录像
 
 WIP
@@ -37,7 +33,76 @@ WIP
 
 ### 广
 
-TODO： 介绍 webpack 的整体流程，和本次阅读主题是其中那一部分。
+从架构出发，我们可以把 Webpack 分为两个部分
+
+- Core
+  - Loader
+- Plugin
+
+Core 代表了 Webpack 的核心功能，覆盖了 Webpack 从解析资源到最终生成打包产物的过程。在这个过程中， Core 通过控制反转的设计，将大部分流程中逻辑暴露出来，从而更加灵活的以一种可插拔的方式去扩展 Core 的功能。
+
+Webpack 设计了一套基于 [`tapable`](https://github.com/webpack/tapable) 的插件系统。其中 `tapable` 的作用是用于抽象插件的注册和执行方式，比如说有的插件按顺序执行，有的可以并行执行。
+
+> 80% of webpack is made up of its own plugin system —— [Understanding webpack from the inside out
+](https://www.youtube.com/watch?v=gEBUU6QfVzk)
+
+本节会着重介绍下 Webpack 的 Core 部分。
+
+#### Core
+
+Webpack 的核心功能是是将各种类型的资源，包括图片、css、js等，转译、组合、拼接，最终生成打包产物。
+
+![webpack-intro](../static/img/1-code-splitting-and-bundle-splitting/webpack-intro.png)
+
+这个过程核心完成了 内容转换 + 资源合并 两种功能，实现上包含三个阶段：
+
+##### 初始化阶段：
+1. 初始化参数：从配置文件、 配置对象、Shell 参数中读取，与默认配置结合得出最终的参数
+2. 创建编译器对象：用上一步得到的参数创建 `Compiler` 对象
+3. 初始化编译环境：包括注入内置插件、注册各种模块工厂、初始化 RuleSet 集合、加载配置的插件等
+4. 开始编译：执行 `Compiler` 对象的 `run()` 方法
+5. 确定入口：根据配置中的 `Entry` 找出所有的入口文件，调用 `compilation.addEntry()` 将 `Entry` 转换为 `Dependency` 对象
+##### 构建阶段：
+1. 编译模块(make)：根据 `Entry` 对应的 `Dependency` 创建 `Module` 对象，调用 `Loader` 将模块转译为标准 JS 内容，调用JS 解释器将内容转换为 AST 对象，从中找出该模块依赖的模块，再 递归 本步骤直到所有入口依赖的文件都经过了本步骤的处理
+2. 完成模块编译：上一步递归处理所有能触达到的模块后，得到了每个模块被翻译后的内容以及它们之间的关系，构建出了 `ModuleGraph`
+##### 生成阶段：
+1. 输出资源(seal)：根据入口和模块之间的依赖关系(是否进行了动态引入)，进行 Code splitting Chunk，构建出 `ChunkGraph` 。根据用户的配置选择是否进行 Bundle splitting ，分割出更多的 `Chunk` 。 随后根据 `Chunk` 生成 `Asset`, 这步是可以修改输出内容的最后机会
+2. 写入文件系统(emitAssets)：在生成 `Asset` 后，根据配置确定输出的路径和文件名，把 `Asset` 写入到文件系统
+
+__总结下就是从 `ModuleGraph` 到 `ChunkGraph` 再到 `Assets` 的过程__。
+
+#### Glossary
+
+接下来，我们来介绍下，上述文章涉及到的一些关键字，更多可参见
+
+###### `Module`
+
+Webpack 内部所有资源都会以 `Module` 实例的方式存在，所有关于资源的操作、转译、合并都是以 `Module` 为基本单位进行的。
+
+###### `ModuleGraph`
+
+`ModuleGraph` 记录了所有 `Module` 的依赖关系
+
+###### `Code splitting`
+
+针对于将要打包的代码，我们基于入口模块和动态入口模块为分割点/`Module` 间的依赖关系，创建 Chunks 的流程，并将模块放入到其应属的 Chunk 中。 Chunks 的创建完全是根据入口模块和动态入口模块的数量来创建。
+
+详细解析见 [Webpack 中的 Code splitting 是什么？](https://bytedance.feishu.cn/docx/doxcnM4naM7kJh36NUYrXldZ8oc)
+
+###### `Bundle splitting`
+
+**Bundle splitting** 是能让你通过配置项对产物进行任意分割的技术。其常见的用途有将依赖的第三方代码单独抽出来代码，以便进行缓存复用。
+
+###### `Chunk`
+
+`Chunk` 由 `Module` 组成， Webpack 会根据代码意图和配置将 `Module` 组装成 `Chunk` ， 在大部分情况下 `Chunk` 与 `Asset` 是一一对应的
+
+###### `ChunkGraph`
+
+`ChunkGraph` 记录了所有 `Chunk` 的依赖关系，这个关系表述为，若 A -> B ，则在加载 A Chunk 之前需要先加载 B 。
+
+
+本节内容多摘抄于 [[万字总结] 一文吃透 Webpack 核心原理](https://zhuanlan.zhihu.com/p/363928061)
 
 ### 谈谈如何阅读代码
 
@@ -58,9 +123,9 @@ TODO： 介绍 webpack 的整体流程，和本次阅读主题是其中那一部
 解决问题 1
 
 - 用简短、精炼的话语总述本段代码
-  - 依照顺寻和关联性列举代码中主要部分。出代代码的流程图，递归的应用本条规则到代码的各个部分，直到你觉得足够详细。
+  - 依照顺寻和关联性列举代码中主要部分。梳理出代码的流程图，递归的应用本条规则到代码的各个部分，直到你觉得足够详细。
 
-- 找出、确定作者想要解决的问题
+- 找出、确定作者的意图或想要解决的问题
 
 解决问题 2
 
@@ -110,16 +175,6 @@ TODO： 介绍 webpack 的整体流程，和本次阅读主题是其中那一部
 
 ### 深
 
-### 什么是 Code splitting ？
-
-针对于将要打包的代码，我们基于入口模块和动态入口模块为分割点创建 Chunks 的流程，并将模块放入到其应属的 Chunk 中。 Chunks 的创建完全是根据入口模块和动态入口模块的数量来创建。
-
-详细解析见 [Webpack 中的 Code splitting 是什么？](https://bytedance.feishu.cn/docx/doxcnM4naM7kJh36NUYrXldZ8oc)
-
-### 什么是 Bundle splitting ？
-
-**Bundle splitting** 是能让你通过配置项对产物进行任意分割的技术。其常见的用途有将依赖的第三方代码单独抽出来代码，以便进行缓存复用。
-
 ### Code splitting 流程
 
 **小技巧：善于使用代码块折叠，有助于你避免无关逻辑的干扰**
@@ -149,28 +204,47 @@ TODO： 介绍 webpack 的整体流程，和本次阅读主题是其中那一部
 
 - Code splitting 产生的 Chunk 类型
 
-  - **Initial chunks** 根据用户配置的入口模块创建的 Chunk，负责加载 Webpack 的运行时和需要初始化加载的模块。
+  - **Initial chunk** 根据用户配置的入口模块创建的 Chunk，负责加载 Webpack 的运行时和需要初始化加载的模块。
 
-  - **Async chunks** 是由异步入口模块，即动态 import 引入的文件，产生的 Chunk，不包含 Webpack 的运行时代码，只负责加载模块。
+  - **Async chunk** 是由异步入口模块，即动态 import 引入的文件，产生的 Chunk，不包含 Webpack 的运行时代码，只负责加载模块。
+
+
+###### 举个例子
+
+我们由
+
+![Module graph](../static/img/1-code-splitting-and-bundle-splitting/module-graph.png)
+
+生成了以下 Chunk
+
+![Chunk graph](../static/img/1-code-splitting-and-bundle-splitting/chunk-graph.png)
+
+其中 `a_js` 和 `foo_js` 都属于 **Initial chunk** ， `c_js` 和 `d_js` 都属于 **Async chunk** 
+
+Chunk 的类型会被 [`splitChunks.chunks`](https://webpack.js.org/plugins/split-chunks-plugin/#splitchunkschunks) 配置项感知，从而决定对那些 Chunk 类型进行分割。
+
 
 - Bundle splitting 通过配置，可以对 Code splitting 阶段产生的 Chunk 进行任意的拆解，组合从而产生新的 Chunk ，我们暂时称呼这种 Chunk 为 **Normal chunks**
 
 由 `SplitChunks` 插件拆解出来的 Chunk 遵循以下规则
 
-- 如果拆解后生成的 Normal chunk 里的模块全部来自于 Async chunk ，那么这个 Normal chunk 也会被异步加载
-- 如果拆解后生成的 Normal chunk 里的模块有部分自于 Initial chunk ，那么这个 Normal chunk 也会先于 Initial chunk 加载
+- 如果拆解后生成的 `Normal chunk` 里的模块全部来自于 `Async chunk` ，那么这个 `Normal chunk` 也会被异步加载
+- 如果拆解后生成的 `Normal chunk` 里的模块有部分自于 `Initial chunk` ，那么这个 `Normal chunk` 会先于 Initial chunk 加载
 
-TODO： 举个例子
 
 #### 什么是 `ChunkGroup`
 
-`ChunkGroup` 用于表示同属于一个 `ChunkGroup` 的 `Chunk` 是可以并行加载的。
+`ChunkGroup` 的作用
+
+- 用于表示同属于一个 `ChunkGroup` 的 `Chunk` 是可以并行加载的。
+- 用于保留 Code splitting 阶段 `Chunk` 之间的关系
+  - 用于 html plugin 来设置那些资源需要在初始化的时候加载
 
 > At an entrypoint or an async splitpoint a single ChunkGroup is referenced, which means all contained Chunks in parallel. A Chunk can be referenced in multiple ChunkGroups.
 
 参考自 [webpack 4: Code Splitting, chunk graph and the `splitChunks` optimization](https://medium.com/webpack/webpack-4-code-splitting-chunk-graph-and-the-splitchunks-optimization-be739a861366)
 
-#### 创建 Entry chunks 和 `EntryPoint`
+#### 创建 Entry chunks 和 `Entrypoint`
 
 - [通过 `compilation#addChunk()` 方法，针对每一个入口项创建一个 Chunk](https://github.com/webpack/webpack/blob/9fcaa243573005d6fdece9a3f8d89a0e8b399613/lib/Compilation.js#L2815-L2817)
 - 针对每一个入口项，创建继承了 `ChunkGroup` 的 `EntryPoint` 实例
@@ -178,7 +252,9 @@ TODO： 举个例子
 
 ##### [`buildChunkGraph()`](https://github.com/webpack/webpack/blob/9fcaa243573005d6fdece9a3f8d89a0e8b399613/lib/buildChunkGraph.js#L1347)
 
-一个典型的缺乏信息的问题，什么是 block ？
+一个典型的缺乏信息的问题，什么是 `Block` ？
+
+`Module` 就是 `Block`
 
 什么是 `DependenciesBlock`
 
@@ -198,17 +274,13 @@ TODO： 举个例子
     - 此处视频演示下，如何按照上述思路解决问题的
     - 对应着 Webpack 支持的入口之间进行依赖的功能，也就是 [dependOn](https://webpack.js.org/concepts/entry-points/#entrydescription-object) 属性
 
-- TOOD： Fill availableSources with parent-child dependencies between entrypoints
-
-  - 这一步对应着满足 `chunkGroup.getNumberOfParents() > 0` 的条件时的 `EntryPoint` 会被放到 `chunkGroupsForCombining` 数组里
-
 - 循环处理 `queue` 和 `queueConnect`
 
   - 调用 `processQueue()` 
 
   - 从 `queue` 里 `pop()` 出一个 `queueItem` 进行处理
 
-    - 面对 `ADD_AND_ENTER_ENTRY_MODULE`
+    - [面对 `ADD_AND_ENTER_ENTRY_MODULE`](https://github.com/webpack/webpack/blob/9fcaa243573005d6fdece9a3f8d89a0e8b399613/lib/buildChunkGraph.js#L700)
 
       - 根据入口模块创建 `ChunkGraphModule` 并与 Initial chunk 链接到一起
       - 根据 Initial chunk 创建 `ChunkGraphChunk` 并与入口模块和 `Entrypoint` 链接到一起
@@ -241,36 +313,29 @@ TODO： 举个例子
 
     - 面对 `PROCESS_BLOCK`
 
-      - 调用 `extractBlockModules()` 获取当前 `block` 下的模块
-        - 从这个 `block` 所代表的模块出发，递归的遍历所有这个模块静态引入的模块
-      - 遍历 `block#blocks` 中的每一项，并调用 `iteratorBlock()` 方法
+      - 调用 `extractBlockModules()` 获取当前 `Block`/`Module` 下的 `Block`/异步`Module`
+        - `extractBlockModules()` 返回的是此 `Module` 异步引入的 `Module`
+      - 遍历 `block#blocks` 中的每一项，并调用 [`iteratorBlock()`](https://github.com/webpack/webpack/blob/9fcaa243573005d6fdece9a3f8d89a0e8b399613/lib/buildChunkGraph.js#L398) 方法
         - `block#blocks` 存储的是异步入口模块
         - 针对每一个 `AsyncDependenciesBlock` 都创建一个 `ChunkGroup`
-          - 并将这个 `ChunkGroup` 和这个 `block` 关联起来
-          - 有，
+          - [并将这个 `ChunkGroup` 和这个 `block` 关联起来](https://github.com/webpack/webpack/blob/9fcaa243573005d6fdece9a3f8d89a0e8b399613/lib/buildChunkGraph.js#L443)
 
     - 面对 `PROCESS_ENTRY_BLOCK`
 
-      - TODO
+      - 略
 
     - 面对 `LEAVE_MODULE`
 
       - 设置模块在 `ChunkGroup` 的 post-order 索引顺序
       - 设置模块在 `ModuleGraph` 的 post-order 索引顺序
 
-  - 问题
-
-    - `processChunkGroupsForCombining()` 是做什么的
-      - 配置了 [dependOn](https://webpack.js.org/concepts/entry-points/#entrydescription-object) 属性
-      - 
-
 ##### `connectChunkGroups()`
 
-TODO
+- 计算 `ChunkGroup` 之间的关系，并链接起来
 
 ##### `cleanupUnconnectedGroups()`
 
-TODO
+- 清理掉没有被链接的 `ChunkGroup`
 
 我们得到一个未经任何优化，最基本的 `ChunkGraph`
 
@@ -368,9 +433,9 @@ TODO
 
 
 
-### 广
+## 步骤三
 
- TODO：介绍 code splitting 和 bundle splitting 的前一个阶段和后一个阶段
+集体 QA
 
 ## 附录
 
@@ -380,3 +445,5 @@ TODO
 
 - [浅析 webpack 打包流程(原理) 三 - 生成 chunk](https://www.jianshu.com/p/b788f7620662)
 - [Webpack: An in-depth introduction to SplitChunksPlugin](https://indepth.dev/posts/1490/webpack-an-in-depth-introduction-to-splitchunksplugin)
+- [Webpack Chunk 生成策略源码探索](https://github.com/CommanderXL/Biu-blog/issues/34)
+- [Webpack - Glossary](https://webpack.js.org/glossary/)
